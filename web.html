@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Quản lý Điểm Sinh viên</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <style>
+        table { border-collapse: collapse; width: 600px; margin-top: 15px; }
+        th, td { border: 1px solid black; padding: 5px; text-align: left; }
+        .error { color: red; margin-top: 5px; font-size: 14px; }
+        button, input { margin-right: 5px; margin-bottom: 5px; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState } = React;
+        const StudentItem = ({ student, onDelete }) => {
+            const { id, name, score, className } = student; 
+            
+            return (
+                <tr>
+                    <td>{id}</td>
+                    <td>{name}</td>
+                    <td>{score}</td>
+                    <td>{className}</td>
+                    <td><button onClick={() => onDelete(id)}>Xóa</button></td>
+                </tr>
+            );
+        };
+        const StudentList = ({ students, onDelete }) => (
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Họ tên</th>
+                        <th>Điểm số</th>
+                        <th>Lớp</th>
+                        <th>Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {students.map(student => (
+                        <StudentItem key={student.id} student={student} onDelete={onDelete} />
+                    ))}
+                </tbody>
+            </table>
+        );
+        const App = () => {
+            const [students, setStudents] = useState([
+                { id: 1, name: 'Nguyễn Văn A', score: 9, className: 'Lớp 1' },
+                { id: 2, name: 'Trần Thị B', score: 4, className: 'Lớp 2' },
+                { id: 3, name: 'Lê Văn C', score: 8, className: 'Lớp 1' }
+            ]);
+            
+            const [formData, setFormData] = useState({ name: '', score: '', className: '' });
+            const [filterMode, setFilterMode] = useState('all');
+            const [errorMsg, setErrorMsg] = useState('');
+            const { name, score, className } = formData;
+            const handleAdd = () => {
+                if (!name || !score || !className) {
+                    setErrorMsg('Vui lòng không để trống thông tin.');
+                    return;
+                }
+                const numScore = Number(score);
+                if (numScore < 0 || numScore > 10) {
+                    setErrorMsg('Điểm số không hợp lệ (từ 0 đến 10).');
+                    return;
+                }
+                setErrorMsg('');
+                const nextId = students.length > 0 
+                    ? Math.max(...students.map(s => s.id)) + 1 
+                    : 1;
+                const newStudent = { id: nextId, name, score: numScore, className };
+                
+                setStudents([...students, newStudent]);
+                setFormData({ name: '', score: '', className: '' });
+            };
+            const handleDelete = (id) => {
+                setStudents(students.filter(s => s.id !== id));
+            };
+            const displayStudents = students.filter(s => {
+                if (filterMode === 'gioi') return s.score >= 8;
+                if (filterMode === 'truot') return s.score < 5;
+                return true;
+            });
+            const totalStudents = students.length;
+            const totalScore = students.reduce((sum, s) => sum + s.score, 0);
+            const avgScore = totalStudents > 0 ? (totalScore / totalStudents).toFixed(2) : 0;
+            return (
+                <div>
+                    <h2>Quản lý Điểm Sinh viên</h2>
+                    <div>
+                        <input placeholder="Họ tên" value={name} onChange={e => setFormData({...formData, name: e.target.value})} />
+                        <input placeholder="Điểm số" type="number" value={score} onChange={e => setFormData({...formData, score: e.target.value})} />
+                        <input placeholder="Lớp" value={className} onChange={e => setFormData({...formData, className: e.target.value})} />
+                        <button onClick={handleAdd}>Thêm</button>
+                        {errorMsg && <div className="error">{errorMsg}</div>}
+                    </div>
+                    <br/>
+                    <div>
+                        <button onClick={() => setFilterMode('all')}>Tất cả</button>
+                        <button onClick={() => setFilterMode('gioi')}>Giỏi (>=8)</button>
+                        <button onClick={() => setFilterMode('truot')}>Trượt (&lt;5)</button>
+                    </div>
+                    <p>{`Tổng số sinh viên: ${totalStudents} | Điểm trung bình cả lớp: ${avgScore}`}</p>
+                    <StudentList students={displayStudents} onDelete={handleDelete} />
+                </div>
+            );
+        };
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
