@@ -23,24 +23,20 @@ export const Play = ({ questions, playerName, onFinishGame }) => {
 
   const currentQ = questions[currentIndex];
 
-  // Chặn nếu chưa nhập tên
-  if (!playerName) {
-    return <Navigate to="/" replace />;
-  }
-
   // Đổi tiêu đề tab trình duyệt
   useEffect(() => {
+    if (!playerName) return;
     const currentScore = calcScore(answers);
     document.title = `Câu ${currentIndex + 1}/15 – ${currentScore} điểm`;
     return () => {
       document.title = 'Rung chuông vàng';
     };
-  }, [currentIndex, answers]);
+  }, [currentIndex, answers, playerName]);
 
   // Phím tắt 1-4
   useEffect(() => {
+    if (!playerName || status !== 'answering') return;
     const handleKeyDown = (e) => {
-      if (status !== 'answering') return;
       const keyMap = { '1': 0, '2': 1, '3': 2, '4': 3 };
       if (e.key in keyMap) {
         const optionIdx = keyMap[e.key];
@@ -51,11 +47,11 @@ export const Play = ({ questions, playerName, onFinishGame }) => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [status, hiddenOptions, currentIndex]);
+  }, [status, hiddenOptions, currentIndex, playerName]);
 
   // Đếm ngược đồng hồ 20s
   useEffect(() => {
-    if (status !== 'answering') return;
+    if (!playerName || status !== 'answering') return;
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
@@ -67,7 +63,12 @@ export const Play = ({ questions, playerName, onFinishGame }) => {
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, [status, currentIndex]);
+  }, [status, currentIndex, playerName]);
+
+  // CHẶN Ở ĐÂY: Đặt điều kiện ở sau các Hook để không vi phạm quy tắc React Hooks
+  if (!playerName) {
+    return <Navigate to="/" replace />;
+  }
 
   // Xử lý Hết giờ
   const handleTimeOut = () => {
@@ -105,25 +106,21 @@ export const Play = ({ questions, playerName, onFinishGame }) => {
 
       if (isCorrect || isSavedByLifeline) {
         if (currentIndex + 1 < questions.length && currentIndex + 1 < 15) {
-          // Sang câu tiếp theo
           setCurrentIndex((prev) => prev + 1);
           setSelectedOption(null);
           setHiddenOptions([]);
           setTimeLeft(TIME_PER_QUESTION);
           setStatus('answering');
         } else {
-          // Thắng cuộc / Hoàn thành 15 câu
           finishGame(updatedAnswers, 'Bạn đã hoàn thành 15 câu');
         }
       } else {
-        // Bị loại
         const reason = isTimeOut ? 'Hết giờ!' : 'Bạn đã bị loại (trả lời sai)';
         finishGame(updatedAnswers, reason);
       }
     }, 1500);
   };
 
-  // Kết thúc lượt chơi & chuyển sang Result
   const finishGame = (finalAnswers, reason) => {
     const score = calcScore(finalAnswers);
     const rank = getRank(score);
@@ -141,7 +138,6 @@ export const Play = ({ questions, playerName, onFinishGame }) => {
     navigate('/result', { replace: true, state: gameData });
   };
 
-  // Trợ giúp 1: Loại 1 đáp án sai
   const handleUseEliminate = () => {
     if (usedHelpers.eliminate || status !== 'answering') return;
     const wrongIndexes = currentQ.options
@@ -152,14 +148,12 @@ export const Play = ({ questions, playerName, onFinishGame }) => {
     setUsedHelpers((prev) => ({ ...prev, eliminate: true }));
   };
 
-  // Trợ giúp 2: Thêm 15 giây
   const handleUseExtraTime = () => {
     if (usedHelpers.extraTime || status !== 'answering') return;
     setTimeLeft((prev) => prev + EXTRA_TIME);
     setUsedHelpers((prev) => ({ ...prev, extraTime: true }));
   };
 
-  // Trợ giúp 3: Phao cứu sinh
   const handleToggleLifeline = () => {
     if (usedHelpers.lifeline && !lifelineActive) return;
     if (!usedHelpers.lifeline) {
